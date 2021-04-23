@@ -1,7 +1,10 @@
-import * as BABYLON from '@babylonjs/core';
-import { Game } from "./Game";
+import { PardalisGame } from "./PardalisGame";
 
-window.BABYLON = BABYLON;
-window.game = new Game({canvas: '#canvas' });
+window.game = new PardalisGame({canvas: '#canvas' });
 
 game.start().then(console.log);
+
+// import * as BABYLON from '@babylonjs/core';
+// import * as CANNON from 'cannon';
+// window.BABYLON = BABYLON;
+// window.CANNON = CANNON;
