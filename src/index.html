@@ -11,15 +11,19 @@
             margin  : 0;
             padding : 0;
         }
-
         #canvas {
             width   : 100%;
             height  : 100%;
             touch-action: none;
         }
+        #debug{
+            position: absolute;
+            display: none;
+        }
     </style>
 </head>
 <body>
+<pre id="debug"></pre>
 <canvas id="canvas"></canvas>
 <script>
 

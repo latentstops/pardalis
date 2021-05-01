@@ -1,5 +1,7 @@
 import { PardalisGame } from "./PardalisGame";
 
+window.CANNON = CANNON;
+window.BABYLON = BABYLON;
 window.game = new PardalisGame({canvas: '#canvas' });
 
 game.start().then(console.log);

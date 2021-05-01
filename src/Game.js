@@ -1,3 +1,4 @@
+import io from 'socket.io-client';
 import { deepAssign } from "./utils/utils";
 
 export class Game {
@@ -12,8 +13,40 @@ export class Game {
         await this.callChildLoadMethod();
         this.beforeRender();
         this.render();
+        this.animateFromSocket();
+
         // this.applyMotionBlurEffect();
         // this.showDebugLayerIfExists();
+    }
+
+    animateFromSocket(){
+        const debugObject = this.debugObject;
+        const socket = io( 'http://192.168.2.17:3003', { transports: [ 'websocket' ] } );
+        // const debugElement = document.querySelector('#debug');
+        socket.on( 'deviceMotion', data => {
+            const rotation = data.rotation;
+
+            // debugElement.innerHTML = JSON.stringify( data, null, 2 );
+            // debugObject.rotation.set( rotation.alpha, rotation.beta, rotation.gamma );
+            // debugObject.rotation.set( rotation.alpha, rotation.gamma, rotation.beta );
+            // debugObject.rotation.set( rotation.gamma, rotation.beta, rotation.alpha );
+            // debugObject.rotation.set( rotation.gamma, rotation.alpha, rotation.beta );
+            // debugObject.rotation.set( rotation.beta, rotation.gamma, rotation.alpha );
+            debugObject.rotation.set( rotation.beta, rotation.alpha, rotation.gamma ); //!
+        } );
+
+        socket.on( 'gyroscope', data => {
+            const { x, y, z } = data;
+            const { x: positionX, y: positionY, z: positionZ } = debugObject.position;
+
+            debugObject.position.set( x + positionX, y + positionY, z + positionZ );
+        } );
+        socket.on( 'accelerometer', data => {
+            const { x, y, z } = data;
+            const { x: positionX, y: positionY, z: positionZ } = debugObject.position;
+
+            // debugObject.position.set( x - positionX, y - positionY, z + positionZ );
+        } );
     }
 
     async callChildLoadMethod(){
@@ -55,7 +88,7 @@ export class Game {
         const defaultLight = scene.getLightByID( "default light" );
         if(!defaultLight) return;
         scene.registerBeforeRender( function(){
-            defaultLight.position = camera.position;
+            // defaultLight.position = camera.position;
         } );
     }
 
@@ -63,7 +96,20 @@ export class Game {
         this.setupCanvas();
         this.setupEngine();
         this.setupScene();
-        this.setupCamera();
+        // this.setupCamera();
+        this.setupGlassMaterial();
+        this.setupDebugObject();
+    }
+
+    setupDebugObject(){
+        const scene = this.scene;
+        const debugObject = BABYLON.Mesh.CreateBox('debugObject', 4, scene);
+        const pbr = this.pbr;
+
+        debugObject.material = pbr;
+        debugObject.material.bumpTexture = new BABYLON.Texture( require('./assets/normal_map.jpg').default, scene );
+        // debugObject.material.wireframe = true;
+        this.debugObject = debugObject;
     }
 
     applyMotionBlurEffect(){
@@ -96,7 +142,7 @@ export class Game {
     }
 
     setupCamera(){
-        const cameraType = this.config.cameraType || 'arc';
+        const cameraType = this.config.cameraType || 'uni';
         const cameraMap = {
             arc: () => this.setupArcRotateCamera(),
             uni: () => this.setupUniversalCamera()
@@ -112,7 +158,7 @@ export class Game {
     setupUniversalCamera(){
         const canvas = this.canvas;
         const scene = this.scene;
-        const camera = new BABYLON.FreeCamera( 'camera', new BABYLON.Vector3( 0, 5, -5 ), scene );
+        const camera = new BABYLON.FreeCamera( 'camera', new BABYLON.Vector3( 0, 0, -200 ), scene );
 
         camera.setTarget( BABYLON.Vector3.Zero() );
 
@@ -157,9 +203,47 @@ export class Game {
         const engine = this.engine;
         const scene = new BABYLON.Scene( engine );
 
+        scene.clearColor = BABYLON.Color3.Black();
+
+        const url = require( "./assets/environment.dds" ).default;
+        scene.environmentTexture = BABYLON.CubeTexture.CreateFromPrefilteredData(url, scene);
+
+
+        // var sphere = BABYLON.Mesh.CreateSphere("sphere", 128, 2, scene);
+        // sphere.material = pbr;
+
+        /*scene.beforeRender = (() => {
+            let a = 0;
+            return () => {
+                a += 0.01;
+                pbr.subSurface.tintColor.r = /!*Math.cos(a) * 0.5 +*!/ 0.5;
+                pbr.subSurface.tintColor.g = /!*Math.cos(a) * 0.5 +*!/ 0.5;
+                pbr.subSurface.tintColor.b = /!*pbr.subSurface.tintColor.g*!/ 0.5;
+            };
+        })();*/
+
+        // scene.createDefaultCamera(true, true, true);
+
         scene.createDefaultCameraOrLight( true, true, true );
 
+        scene.createDefaultSkybox(scene.environmentTexture);
+
         this.scene = scene;
+    }
+
+    setupGlassMaterial(){
+        const scene = this.scene;
+
+        const pbr = new BABYLON.PBRMaterial( "pbr", scene );
+
+        pbr.metallic = 0.0;
+        pbr.roughness = 0;
+
+        pbr.subSurface.isRefractionEnabled = true;
+        pbr.subSurface.indexOfRefraction = 1.5;
+        pbr.subSurface.tintColor = new BABYLON.Color3( 0.5, 0.5, 0.5 );
+
+        this.pbr = pbr;
     }
 
     setupEngine(){
